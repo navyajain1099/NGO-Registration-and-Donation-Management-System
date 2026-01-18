@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import API from '../api';
+import { useNavigate } from 'react-router-dom'; // Import Navigate
 
 const AdminDashboard = () => {
     const [users, setUsers] = useState([]);
     const [donations, setDonations] = useState([]);
-    const [activeTab, setActiveTab] = useState('users'); // 'users' or 'donations'
+    const [activeTab, setActiveTab] = useState('users');
+    const navigate = useNavigate(); // Hook for navigation
 
     useEffect(() => {
         fetchData();
@@ -21,16 +23,23 @@ const AdminDashboard = () => {
         }
     };
 
-    // Calculate Stats
     const totalRaised = donations
         .filter(d => d.status === 'Success')
         .reduce((sum, d) => sum + d.amount, 0);
 
     return (
         <div className="container">
-            <h1 style={{ marginBottom: '30px' }}>Admin Control Center</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+                <h1 style={{ margin: 0 }}>Admin Control Center</h1>
+                {/* NEW BUTTON: Allows Admin to see their own history */}
+                <button
+                    onClick={() => navigate('/dashboard')}
+                    style={{ background: '#475569', fontSize: '0.9rem' }}
+                >
+                    👤 Switch to My Donor Profile
+                </button>
+            </div>
 
-            {/* 1. TOP STATS ROW */}
             <div className="stats-grid">
                 <div className="stat-box">
                     <div className="stat-title">Total Registered Users</div>
@@ -42,7 +51,6 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            {/* 2. TABS */}
             <div className="card">
                 <div className="tabs">
                     <button
@@ -59,7 +67,6 @@ const AdminDashboard = () => {
                     </button>
                 </div>
 
-                {/* 3. DYNAMIC CONTENT */}
                 {activeTab === 'users' ? (
                     <table>
                         <thead>

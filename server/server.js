@@ -33,8 +33,8 @@ app.post('/api/login', (req, res) => {
     db.get(`SELECT * FROM users WHERE email = ? AND password = ?`, [email, password], (err, user) => {
         if (!user) return res.status(401).json({ error: "Invalid credentials" });
 
-        // FORCE ADMIN ROLE for your specific email
-        if (email === "admin@nss.com") {
+        // CHANGE THIS LINE to match your email:
+        if (email === "admin@gmail.com") {
             return res.json({ ...user, role: 'admin' });
         }
 
@@ -49,7 +49,6 @@ app.post('/api/create-order', async (req, res) => {
 
     try {
         const order = await razorpay.orders.create(options);
-        // Log 'Pending' immediately
         db.run(`INSERT INTO donations (user_id, amount, status, order_id) VALUES (?, ?, 'Pending', ?)`,
             [user_id, amount, order.id]);
         res.json(order);
@@ -77,14 +76,16 @@ app.post('/api/verify-payment', (req, res) => {
     }
 });
 
-// 5. ADMIN STATS
-app.get('/api/admin/stats', (req, res) => {
-    db.all(`SELECT donations.*, users.name FROM donations JOIN users ON donations.user_id = users.id`, [], (err, rows) => {
+// 5. GET USER HISTORY (This was MISSING in your upload!)
+app.get('/api/my-donations/:userId', (req, res) => {
+    const userId = req.params.userId;
+    db.all(`SELECT * FROM donations WHERE user_id = ? ORDER BY date DESC`, [userId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
 });
 
-// 6. GET ALL USERS (New Requirement)
+// 6. ADMIN: GET ALL USERS
 app.get('/api/admin/users', (req, res) => {
     db.all(`SELECT id, name, email, role FROM users`, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -92,7 +93,7 @@ app.get('/api/admin/users', (req, res) => {
     });
 });
 
-// 7. GET ALL DONATIONS (New Requirement)
+// 7. ADMIN: GET ALL DONATIONS
 app.get('/api/admin/donations', (req, res) => {
     db.all(`SELECT donations.*, users.name, users.email FROM donations LEFT JOIN users ON donations.user_id = users.id`, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
