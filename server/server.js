@@ -78,4 +78,13 @@ app.get('/api/admin/stats', (req, res) => {
     });
 });
 
+// 6. GET USER DONATION HISTORY (New Requirement)
+app.get('/api/my-donations/:userId', (req, res) => {
+    const userId = req.params.userId;
+    db.all(`SELECT * FROM donations WHERE user_id = ? ORDER BY date DESC`, [userId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
 app.listen(5000, () => console.log("Server running on port 5000"));
