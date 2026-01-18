@@ -2,79 +2,116 @@ import React, { useEffect, useState } from 'react';
 import API from '../api';
 
 const AdminDashboard = () => {
+    const [users, setUsers] = useState([]);
     const [donations, setDonations] = useState([]);
-    const [stats, setStats] = useState({ totalUsers: 0, totalAmount: 0 });
+    const [activeTab, setActiveTab] = useState('users'); // 'users' or 'donations'
 
     useEffect(() => {
-        API.get('/admin/stats').then((res) => {
-            const data = res.data;
-            setDonations(data);
-
-            // 1. Calculate Totals for the Dashboard
-            const uniqueUsers = new Set(data.map(d => d.name)).size;
-            const totalMoney = data
-                .filter(d => d.status === 'Success')
-                .reduce((sum, d) => sum + d.amount, 0);
-
-            setStats({ totalUsers: uniqueUsers, totalAmount: totalMoney });
-        });
+        fetchData();
     }, []);
 
-    // 2. CSV Export Feature
-    const downloadCSV = () => {
-        let csvContent = "data:text/csv;charset=utf-8,User,Amount,Status,Order ID\n";
-        donations.forEach(row => {
-            csvContent += `${row.name},${row.amount},${row.status},${row.order_id}\n`;
-        });
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "nss_report.csv");
-        document.body.appendChild(link);
-        link.click();
+    const fetchData = async () => {
+        try {
+            const usersRes = await API.get('/admin/users');
+            const donationsRes = await API.get('/admin/donations');
+            setUsers(usersRes.data);
+            setDonations(donationsRes.data);
+        } catch (err) {
+            console.error("Error fetching admin data", err);
+        }
     };
 
-    return (
-        <div style={{ padding: '2rem' }}>
-            <h1>Admin Dashboard</h1>
+    // Calculate Stats
+    const totalRaised = donations
+        .filter(d => d.status === 'Success')
+        .reduce((sum, d) => sum + d.amount, 0);
 
-            {/* New Stats Cards */}
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-                <div style={{ padding: '20px', background: '#eee', borderRadius: '8px' }}>
-                    <h3>Total Users</h3>
-                    <p>{stats.totalUsers}</p>
+    return (
+        <div className="container">
+            <h1 style={{ marginBottom: '30px' }}>Admin Control Center</h1>
+
+            {/* 1. TOP STATS ROW */}
+            <div className="stats-grid">
+                <div className="stat-box">
+                    <div className="stat-title">Total Registered Users</div>
+                    <div className="stat-value">{users.length}</div>
                 </div>
-                <div style={{ padding: '20px', background: '#dff0d8', borderRadius: '8px' }}>
-                    <h3>Total Raised</h3>
-                    <p>₹{stats.totalAmount}</p>
+                <div className="stat-box green">
+                    <div className="stat-title">Total Funds Collected</div>
+                    <div className="stat-value">₹{totalRaised.toLocaleString()}</div>
                 </div>
-                <button onClick={downloadCSV} style={{ padding: '10px 20px', height: 'fit-content', alignSelf: 'center' }}>
-                    Download CSV Report
-                </button>
             </div>
 
-            <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                    <tr style={{ background: '#333', color: '#fff' }}>
-                        <th>User</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Order ID</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {donations.map((d, index) => (
-                        <tr key={index}>
-                            <td>{d.name}</td>
-                            <td>₹{d.amount}</td>
-                            <td style={{ color: d.status === 'Success' ? 'green' : 'red', fontWeight: 'bold' }}>
-                                {d.status}
-                            </td>
-                            <td>{d.order_id}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+            {/* 2. TABS */}
+            <div className="card">
+                <div className="tabs">
+                    <button
+                        className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('users')}
+                    >
+                        👥 User Registry
+                    </button>
+                    <button
+                        className={`tab-btn ${activeTab === 'donations' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('donations')}
+                    >
+                        💰 Donation Records
+                    </button>
+                </div>
+
+                {/* 3. DYNAMIC CONTENT */}
+                {activeTab === 'users' ? (
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email Address</th>
+                                <th>Role</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.map(u => (
+                                <tr key={u.id}>
+                                    <td>#{u.id}</td>
+                                    <td><strong>{u.name}</strong></td>
+                                    <td>{u.email}</td>
+                                    <td>
+                                        <span className={`badge ${u.role === 'admin' ? 'badge-admin' : 'badge-user'}`}>
+                                            {u.role.toUpperCase()}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Donor Name</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {donations.map(d => (
+                                <tr key={d.id}>
+                                    <td style={{ fontFamily: 'monospace' }}>{d.order_id}</td>
+                                    <td>{d.name} <br /><small style={{ color: '#999' }}>{d.email}</small></td>
+                                    <td style={{ fontWeight: 'bold' }}>₹{d.amount}</td>
+                                    <td>
+                                        <span className={`badge ${d.status === 'Success' ? 'badge-success' : 'badge-pending'}`}>
+                                            {d.status}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
         </div>
     );
 };

@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Auth from './components/Auth';
 import UserDashboard from './components/UserDashboard';
 import AdminDashboard from './components/AdminDashboard';
+import './App.css';
 
 function App() {
   const [user, setUser] = useState(null);

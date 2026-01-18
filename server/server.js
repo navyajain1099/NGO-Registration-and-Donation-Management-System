@@ -27,11 +27,17 @@ app.post('/api/register', (req, res) => {
     );
 });
 
-// 2. LOGIN
+// 2. LOGIN (Modified for Admin Access)
 app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
     db.get(`SELECT * FROM users WHERE email = ? AND password = ?`, [email, password], (err, user) => {
         if (!user) return res.status(401).json({ error: "Invalid credentials" });
+
+        // FORCE ADMIN ROLE for your specific email
+        if (email === "admin@nss.com") {
+            return res.json({ ...user, role: 'admin' });
+        }
+
         res.json(user);
     });
 });
@@ -78,10 +84,17 @@ app.get('/api/admin/stats', (req, res) => {
     });
 });
 
-// 6. GET USER DONATION HISTORY (New Requirement)
-app.get('/api/my-donations/:userId', (req, res) => {
-    const userId = req.params.userId;
-    db.all(`SELECT * FROM donations WHERE user_id = ? ORDER BY date DESC`, [userId], (err, rows) => {
+// 6. GET ALL USERS (New Requirement)
+app.get('/api/admin/users', (req, res) => {
+    db.all(`SELECT id, name, email, role FROM users`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// 7. GET ALL DONATIONS (New Requirement)
+app.get('/api/admin/donations', (req, res) => {
+    db.all(`SELECT donations.*, users.name, users.email FROM donations LEFT JOIN users ON donations.user_id = users.id`, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
