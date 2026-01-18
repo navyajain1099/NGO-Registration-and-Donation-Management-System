@@ -10,7 +10,7 @@ const UserDashboard = ({ user }) => {
 
         // 2. Open Razorpay
         const options = {
-            key: "YOUR_RAZORPAY_KEY_ID_HERE", // Paste Key Here Too
+            key: process.env.REACT_APP_RAZORPAY_KEY_ID, // Paste Key Here Too
             amount: order.amount,
             currency: "INR",
             name: "NSS Donation",

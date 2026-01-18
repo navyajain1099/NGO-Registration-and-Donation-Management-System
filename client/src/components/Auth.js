@@ -13,8 +13,7 @@ const Auth = ({ setUser }) => {
             const endpoint = isLogin ? '/login' : '/register';
             const { data } = await API.post(endpoint, formData);
             setUser(data);
-            // Redirect based on role
-            navigate(data.role === 'admin' ? '/admin' : '/dashboard');
+
         } catch (error) {
             alert('Error: ' + (error.response?.data?.error || 'Something went wrong'));
         }
