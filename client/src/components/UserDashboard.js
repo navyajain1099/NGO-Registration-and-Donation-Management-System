@@ -4,9 +4,8 @@ import API from '../api';
 const UserDashboard = ({ user }) => {
     const [amount, setAmount] = useState('');
     const [myDonations, setMyDonations] = useState([]);
-    const [activeTab, setActiveTab] = useState('donate'); // 'donate' or 'history'
+    const [activeTab, setActiveTab] = useState('donate');
 
-    // Load History on Boot
     useEffect(() => {
         if (user && user.id) {
             fetchHistory();
@@ -25,10 +24,8 @@ const UserDashboard = ({ user }) => {
     const handleDonate = async () => {
         if (!amount) return alert("Please enter an amount");
 
-        // 1. Create Order
         const { data: order } = await API.post('/create-order', { amount, user_id: user.id });
 
-        // 2. Open Razorpay
         const options = {
             key: process.env.REACT_APP_RAZORPAY_KEY_ID,
             amount: order.amount,
@@ -37,7 +34,6 @@ const UserDashboard = ({ user }) => {
             description: "Donation for a cause",
             order_id: order.id,
             handler: async function (response) {
-                // 3. Verify
                 const verifyData = {
                     razorpay_payment_id: response.razorpay_payment_id,
                     razorpay_order_id: response.razorpay_order_id,
@@ -47,120 +43,174 @@ const UserDashboard = ({ user }) => {
                     const res = await API.post('/verify-payment', verifyData);
                     if (res.data.status === 'success') {
                         alert('Donation Successful! Thank you.');
-                        setAmount(''); // Clear input
-                        fetchHistory(); // Refresh the list instantly
-                        setActiveTab('history'); // Switch to history view
+                        setAmount('');
+                        fetchHistory();
+                        setActiveTab('history');
                     }
                 } catch (err) {
                     alert('Payment Verification Failed');
                 }
             },
             prefill: { name: user.name, email: user.email },
-            theme: { color: "#3399cc" }
+            theme: { color: "#0d9488" }
         };
         const rzp = new window.Razorpay(options);
         rzp.open();
     };
 
+    const totalDonated = myDonations
+        .filter(d => d.status === 'Success')
+        .reduce((sum, d) => sum + d.amount, 0);
+
+    const presetAmounts = [100, 500, 1000, 5000];
+
     return (
-        <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-            {/* Header / Profile Section */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '1px solid #ccc', paddingBottom: '1rem' }}>
-                <div>
-                    <h1>Hello, {user.name} 👋</h1>
-                    <p style={{ color: '#666' }}>{user.email} | ID: {user.id}</p>
+        <div className="dashboard-container">
+            {/* Header Section */}
+            <div className="dashboard-header">
+                <div className="dashboard-greeting">
+                    <h1>Hello, {user.name}! 👋</h1>
+                    <p>Thank you for being a part of our mission to make a difference.</p>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                    <h3>Total Donated</h3>
-                    <p style={{ fontSize: '1.5rem', color: 'green', fontWeight: 'bold' }}>
-                        ₹{myDonations.filter(d => d.status === 'Success').reduce((sum, d) => sum + d.amount, 0)}
-                    </p>
+                <div className="dashboard-stats">
+                    <h4>Total Contributions</h4>
+                    <div className="amount">₹{totalDonated.toLocaleString()}</div>
                 </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+            {/* Tab Navigation */}
+            <div className="dashboard-tabs">
                 <button
+                    className={`dashboard-tab ${activeTab === 'donate' ? 'active' : ''}`}
                     onClick={() => setActiveTab('donate')}
-                    style={{
-                        flex: 1,
-                        padding: '10px',
-                        background: activeTab === 'donate' ? '#333' : '#eee',
-                        color: activeTab === 'donate' ? '#fff' : '#333',
-                        border: 'none', borderRadius: '5px', cursor: 'pointer'
-                    }}
                 >
                     ❤️ Make a Donation
                 </button>
                 <button
+                    className={`dashboard-tab ${activeTab === 'history' ? 'active' : ''}`}
                     onClick={() => setActiveTab('history')}
-                    style={{
-                        flex: 1,
-                        padding: '10px',
-                        background: activeTab === 'history' ? '#333' : '#eee',
-                        color: activeTab === 'history' ? '#fff' : '#333',
-                        border: 'none', borderRadius: '5px', cursor: 'pointer'
-                    }}
                 >
                     📜 Donation History
                 </button>
             </div>
 
-            {/* CONTENT AREA */}
+            {/* Content Area */}
             {activeTab === 'donate' ? (
-                <div style={{ textAlign: 'center', padding: '2rem', border: '1px solid #eee', borderRadius: '8px' }}>
+                <div className="donation-section">
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💚</div>
                     <h3>Support Our Cause</h3>
-                    <p>Your contribution helps us make a difference.</p>
-                    <div style={{ marginTop: '1rem' }}>
+                    <p>Your contribution helps us bring hope and change to those in need.</p>
+
+                    {/* Preset Amounts */}
+                    <div style={{
+                        display: 'flex',
+                        gap: '0.75rem',
+                        justifyContent: 'center',
+                        marginBottom: '1.5rem',
+                        flexWrap: 'wrap'
+                    }}>
+                        {presetAmounts.map(preset => (
+                            <button
+                                key={preset}
+                                onClick={() => setAmount(preset.toString())}
+                                style={{
+                                    padding: '0.75rem 1.5rem',
+                                    background: amount === preset.toString()
+                                        ? 'linear-gradient(135deg, #0d9488, #14b8a6)'
+                                        : '#f5f5f5',
+                                    color: amount === preset.toString() ? 'white' : '#404040',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    fontSize: '1rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    boxShadow: amount === preset.toString()
+                                        ? '0 4px 15px rgba(20, 184, 166, 0.4)'
+                                        : 'none',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                ₹{preset.toLocaleString()}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="donation-input-group">
                         <input
                             type="number"
-                            placeholder="Enter Amount (₹)"
+                            placeholder="Enter custom amount (₹)"
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
-                            style={{ padding: '10px', fontSize: '1.2rem', width: '200px', marginRight: '10px' }}
+                            style={{
+                                maxWidth: '280px',
+                                fontSize: '1.1rem'
+                            }}
                         />
                         <button
                             onClick={handleDonate}
-                            style={{ padding: '12px 24px', fontSize: '1.2rem', background: '#28a745', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                            className="donate-btn"
                         >
-                            Donate Now
+                            🎁 Donate Now
                         </button>
                     </div>
+
+                    {/* Impact Message */}
+                    {amount && parseInt(amount) > 0 && (
+                        <div style={{
+                            marginTop: '2rem',
+                            padding: '1rem 1.5rem',
+                            background: 'linear-gradient(135deg, #f0fdfa, #ccfbf1)',
+                            borderRadius: '12px',
+                            display: 'inline-block'
+                        }}>
+                            <span style={{ color: '#0f766e', fontWeight: 500 }}>
+                                ✨ Your ₹{parseInt(amount).toLocaleString()} can provide meals for {Math.floor(parseInt(amount) / 50)} people!
+                            </span>
+                        </div>
+                    )}
                 </div>
             ) : (
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
-                        <thead>
-                            <tr style={{ background: '#f8f9fa', textAlign: 'left' }}>
-                                <th style={{ padding: '10px', borderBottom: '2px solid #dee2e6' }}>Date</th>
-                                <th style={{ padding: '10px', borderBottom: '2px solid #dee2e6' }}>Order ID</th>
-                                <th style={{ padding: '10px', borderBottom: '2px solid #dee2e6' }}>Amount</th>
-                                <th style={{ padding: '10px', borderBottom: '2px solid #dee2e6' }}>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {myDonations.length === 0 ? (
-                                <tr><td colSpan="4" style={{ textAlign: 'center', padding: '20px' }}>No donations yet.</td></tr>
-                            ) : (
-                                myDonations.map((d) => (
-                                    <tr key={d.id} style={{ borderBottom: '1px solid #eee' }}>
-                                        <td style={{ padding: '10px' }}>{new Date(d.date).toLocaleDateString()}</td>
-                                        <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: '0.9rem' }}>{d.order_id}</td>
-                                        <td style={{ padding: '10px', fontWeight: 'bold' }}>₹{d.amount}</td>
-                                        <td style={{ padding: '10px' }}>
-                                            <span style={{
-                                                padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem',
-                                                background: d.status === 'Success' ? '#d4edda' : '#f8d7da',
-                                                color: d.status === 'Success' ? '#155724' : '#721c24'
-                                            }}>
-                                                {d.status}
+                <div className="history-section">
+                    {myDonations.length === 0 ? (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📭</div>
+                            <h4>No donations yet</h4>
+                            <p>Start your giving journey today!</p>
+                        </div>
+                    ) : (
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Order ID</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {myDonations.map((d) => (
+                                    <tr key={d.id}>
+                                        <td>{new Date(d.date).toLocaleDateString('en-IN', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            year: 'numeric'
+                                        })}</td>
+                                        <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                                            {d.order_id}
+                                        </td>
+                                        <td style={{ fontWeight: 700, color: '#0f766e' }}>
+                                            ₹{d.amount.toLocaleString()}
+                                        </td>
+                                        <td>
+                                            <span className={`badge ${d.status === 'Success' ? 'badge-success' : 'badge-pending'}`}>
+                                                {d.status === 'Success' ? '✓ ' : '⏳ '}{d.status}
                                             </span>
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             )}
         </div>
